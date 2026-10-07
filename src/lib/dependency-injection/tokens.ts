@@ -8,4 +8,6 @@
 export const TOKENS = {
   Config: Symbol('Config'),
   Logger: Symbol('Logger'),
+  PgPool: Symbol('PgPool'),
+  Database: Symbol('Database'),
 } as const;

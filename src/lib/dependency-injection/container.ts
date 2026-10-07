@@ -1,5 +1,8 @@
 import { container as rootContainer, type DependencyContainer } from 'tsyringe';
+import type { Pool } from 'pg';
 import type { Config } from '../config/config.schema.js';
+import { Database } from '../database/database.js';
+import { createPool } from '../database/pool.provider.js';
 import { createLogger, type Logger } from '../logger/logger.js';
 import { TOKENS } from './tokens.js';
 
@@ -31,7 +34,11 @@ export function buildContainer({
   });
   container.register<Logger>(TOKENS.Logger, { useValue: logger });
 
-  // Infrastructure (Tasks 1.7+) and application modules (registerXModule) are registered here.
+  const pool = createPool({ db: config.db, applicationName: `nile-${processName}`, logger });
+  container.register<Pool>(TOKENS.PgPool, { useValue: pool });
+  container.register<Database>(TOKENS.Database, { useValue: new Database(pool) });
+
+  // Remaining infrastructure (Tasks 1.8+) and application modules (registerXModule) go here.
 
   return container;
 }

@@ -1,6 +1,7 @@
 // HTTP process entrypoint. Must be the first import so tsyringe decorators can use the Reflect API.
 import 'reflect-metadata';
 
+import type { Pool } from 'pg';
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './lib/config/load-config.js';
 import { buildContainer } from './lib/dependency-injection/container.js';
@@ -27,8 +28,10 @@ async function main(): Promise<void> {
     void shutdown.shutdown('uncaughtException', 1);
   });
 
-  // Infrastructure closers (PostgreSQL pool, Redis) are registered here in Tasks 1.7–1.8,
-  // before the server, so they are closed after it.
+  // Infrastructure closers are registered before the server so they are closed after it.
+  const pool = container.resolve<Pool>(TOKENS.PgPool);
+  shutdown.register('postgres-pool', () => pool.end());
+  // Redis is registered here in Task 1.8.
 
   const server = await listen(createApp(), config.http.port);
   shutdown.register('http-server', () => closeServer(server));
