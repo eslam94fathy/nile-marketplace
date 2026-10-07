@@ -1,5 +1,7 @@
 import { container as rootContainer, type DependencyContainer } from 'tsyringe';
+import type { Redis } from 'ioredis';
 import type { Pool } from 'pg';
+import { createRedis } from '../cache/redis.provider.js';
 import type { Config } from '../config/config.schema.js';
 import { Database } from '../database/database.js';
 import { createPool } from '../database/pool.provider.js';
@@ -38,7 +40,14 @@ export function buildContainer({
   container.register<Pool>(TOKENS.PgPool, { useValue: pool });
   container.register<Database>(TOKENS.Database, { useValue: new Database(pool) });
 
-  // Remaining infrastructure (Tasks 1.8+) and application modules (registerXModule) go here.
+  const redis = createRedis({
+    url: config.redis.url,
+    connectionName: `nile-${processName}`,
+    logger,
+  });
+  container.register<Redis>(TOKENS.Redis, { useValue: redis });
+
+  // Remaining infrastructure (Tasks 1.9+) and application modules (registerXModule) go here.
 
   return container;
 }
