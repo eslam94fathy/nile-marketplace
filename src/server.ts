@@ -1,4 +1,47 @@
 // HTTP process entrypoint. Must be the first import so tsyringe decorators can use the Reflect API.
 import 'reflect-metadata';
 
-// HTTP bootstrap is implemented in Task 1.5.
+import { createApp } from './app.js';
+import { ConfigError, loadConfig } from './lib/config/load-config.js';
+import { closeServer, listen } from './lib/http/http-server.js';
+import { createGracefulShutdown } from './lib/lifecycle/graceful-shutdown.js';
+import { createLogger } from './lib/logger/logger.js';
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+async function main(): Promise<void> {
+  const config = loadConfig();
+  const logger = createLogger({
+    name: 'api',
+    level: config.log.level,
+    pretty: config.nodeEnv === 'development',
+  });
+
+  const shutdown = createGracefulShutdown({ logger, timeoutMs: SHUTDOWN_TIMEOUT_MS });
+
+  process.on('unhandledRejection', (reason) => {
+    logger.fatal({ err: reason }, 'Unhandled promise rejection');
+    void shutdown.shutdown('unhandledRejection', 1);
+  });
+  process.on('uncaughtException', (err) => {
+    logger.fatal({ err }, 'Uncaught exception');
+    void shutdown.shutdown('uncaughtException', 1);
+  });
+
+  // Infrastructure closers (PostgreSQL pool, Redis) are registered here in Tasks 1.7–1.8,
+  // before the server, so they are closed after it.
+
+  const server = await listen(createApp(), config.http.port);
+  shutdown.register('http-server', () => closeServer(server));
+  logger.info({ port: config.http.port, nodeEnv: config.nodeEnv }, 'HTTP server listening');
+
+  for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(signal, () => void shutdown.shutdown(signal));
+  }
+}
+
+main().catch((err: unknown) => {
+  // The logger may not exist yet (e.g. invalid configuration), so report to stderr directly.
+  console.error(err instanceof ConfigError ? err.message : err);
+  process.exit(1);
+});
