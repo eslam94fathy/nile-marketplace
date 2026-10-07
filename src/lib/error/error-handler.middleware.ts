@@ -58,14 +58,16 @@ export function errorHandler(logger: Logger): ErrorRequestHandler {
 }
 
 function log(logger: Logger, error: AppError, status: number): void {
-  const context = { err: error, code: error.code, status };
+  // Stacks (and causes) only where they help find a bug.
+  const withStack = { err: error, code: error.code, status };
 
   if (status >= 500) {
-    logger.error(context, 'Request failed');
+    logger.error(withStack, 'Request failed');
   } else if (isPgError(error.cause)) {
     // A repository let a database constraint error escape instead of translating it.
-    logger.warn(context, 'Untranslated database error mapped to client error');
+    logger.warn(withStack, 'Untranslated database error mapped to client error');
   } else {
-    logger.debug(context, 'Request rejected');
+    // An expected client error: the stack trace would only add noise.
+    logger.debug({ code: error.code, status, message: error.message }, 'Request rejected');
   }
 }

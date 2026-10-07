@@ -14,13 +14,14 @@ The blueprint (`docs/marketplace_blueprint.md`) fixes the architecture: no ORM, 
 
 | Concern              | Decision                                                                                                                      |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Runtime              | Node.js ≥ 22.12 (LTS line), ESM (`"type": "module"`)                                                                          |
+| Runtime              | Node.js ≥ 22.12, ESM (`"type": "module"`). CI and `.nvmrc` use Node 24 LTS (the dependency-cruiser CLI rejects odd releases)  |
 | Package manager      | pnpm (version pinned in `packageManager`). Dependency build scripts are allow-listed in `pnpm-workspace.yaml` (`allowBuilds`) |
 | Language             | TypeScript `~6.0`, `strict`                                                                                                   |
 | Dev runner           | `tsx` (watch mode); production runs compiled `dist/` with plain `node`                                                        |
-| Lint / format        | ESLint (flat config) + `typescript-eslint` + Prettier (`eslint-config-prettier` disables conflicting rules)                   |
+| Lint / format        | ESLint (flat config) + `typescript-eslint` (incl. type-aware promise rules) + Prettier                                        |
 | Tests                | Vitest + Supertest; integration tests use the Docker Compose services and a separate `nile_test` database                     |
-| Architecture checks  | `dependency-cruiser` (rules added in Task 1.18)                                                                               |
+| Architecture checks  | `dependency-cruiser` rules in `.dependency-cruiser.cjs`, enforced by `pnpm test` and proven against violation fixtures        |
+| Quality gate         | `pnpm check` (lint, typecheck, format, build, all tests) locally and in CI (`.github/workflows/ci.yml`)                       |
 | Local infrastructure | `docker-compose.yml`: PostgreSQL 18, Redis 8, RabbitMQ 4 (management)                                                         |
 
 **Why TypeScript 6.0, not 7.** TypeScript 7 is the native (Go) compiler. It doesn't provide the JS compiler API that `typescript-eslint` (peer range `<6.1.0`) and `dependency-cruiser` need. TS 7 does still support the legacy decorators `tsyringe` needs. Revisit once the tooling supports TS 7.
@@ -57,8 +58,9 @@ The blueprint (`docs/marketplace_blueprint.md`) fixes the architecture: no ORM, 
   ```
   `limit` defaults to 20, max 100. Cursors are opaque (base64url) and bound to one sort order (`src/lib/pagination`). Chronological lists sort by the uuidv7 `id` alone. Timestamp sort keys are carried as microsecond UTC ISO text produced in SQL, never through a JS `Date` (millisecond precision silently skips rows).
 - **Module layout** (`src/app/<module>/`): `domain/`, `application/` (services + ports), `infrastructure/` (SQL repositories with co-located SQL), `presentation/` (controllers, zod schemas, router), `index.ts`.
-- **Health.** `GET /health/live` checks nothing (a dependency outage must not restart the process). `GET /health/ready` checks only the dependencies that process needs: the API checks PostgreSQL and Redis but **not** RabbitMQ, since the outbox keeps the API working while the broker is down. The worker reports broker health. Responses never include raw dependency errors.
-- **Outbox and audit** infrastructure is part of Phase 1 (tasks 1.15–1.16) so later phases can use it. Business events are only added when a real consumer exists.
+- **Health.** `GET /health/live` checks nothing (a dependency outage must not restart the process). `GET /health/ready` checks only the dependencies that process needs: the API checks PostgreSQL and Redis but **not** RabbitMQ, since the outbox keeps the API working while the broker is down. The worker serves the same endpoints on `WORKER_HEALTH_PORT` and checks PostgreSQL and RabbitMQ. Responses never include raw dependency errors.
+- **Outbox.** Events are written with `OutboxWriter.append()` inside the business transaction and relayed by the worker to the `nile.events` topic exchange (routing key = event type, body = `{ id, type, aggregateType, aggregateId, occurredAt, correlationId, payload }`). Delivery is **at-least-once** and ordering is best-effort: consumers deduplicate by message ID. Business events are only added when a real consumer exists.
+- **Audit.** `AuditLogger.record()` writes to `audit_logs`, which a database trigger keeps append-only. Successful actions are audited inside their transaction; failures (e.g. failed logins) outside it so they are kept. Metadata must not contain secrets (rejected at runtime).
 
 ## Consequences
 

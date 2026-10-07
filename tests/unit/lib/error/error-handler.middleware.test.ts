@@ -195,12 +195,21 @@ describe('errorHandler', () => {
     });
   });
 
-  it('logs client errors at debug level only', async () => {
-    const { app, lines } = throwing(new NotFoundError());
+  it('logs client errors at debug level only, without a stack trace', async () => {
+    const { app, lines } = throwing(new NotFoundError('Product p-1 was not found'));
 
-    await request(app).get('/boom');
+    await request(app).get('/boom').set('X-Correlation-ID', 'debug-1');
 
-    expect(lines.map((line) => line.level)).toEqual(['debug']);
+    expect(lines).toEqual([
+      expect.objectContaining({
+        level: 'debug',
+        code: 'NOT_FOUND',
+        status: 404,
+        message: 'Product p-1 was not found',
+        correlationId: 'debug-1',
+      }),
+    ]);
+    expect(lines[0]).not.toHaveProperty('err');
   });
 
   it('aborts the connection and logs when the response was already started', async () => {
