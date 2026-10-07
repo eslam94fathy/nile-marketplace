@@ -1,0 +1,7 @@
+dist/
+coverage/
+pnpm-lock.yaml
+
+# Source specification docs are kept exactly as authored.
+docs/marketplace_blueprint.md
+docs/phase-*.md
