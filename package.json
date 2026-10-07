@@ -23,7 +23,7 @@
     "format:check": "prettier --check .",
     "depcruise": "depcruise src --config .dependency-cruiser.cjs",
     "check": "pnpm lint && pnpm typecheck && pnpm format:check && pnpm build && pnpm test",
-    "migrate": "node-pg-migrate --migrations-dir src/migrations --check-order",
+    "migrate": "tsx --env-file-if-exists=.env src/migrate.ts --migrations-dir src/migrations --check-order",
     "migrate:up": "pnpm migrate up",
     "migrate:down": "pnpm migrate down",
     "migrate:create": "pnpm migrate create --migration-file-language sql"

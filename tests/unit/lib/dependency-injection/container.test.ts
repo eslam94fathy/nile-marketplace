@@ -12,9 +12,14 @@ import type { Logger } from '../../../../src/lib/logger/logger.js';
 const config = loadConfig({
   NODE_ENV: 'test',
   LOG_LEVEL: 'silent',
-  DATABASE_URL: 'postgres://nile:nile@localhost:5432/nile_test',
-  REDIS_URL: 'redis://localhost:6379',
-  RABBITMQ_URL: 'amqp://nile:nile@localhost:5672',
+  POSTGRES_HOST: 'localhost',
+  POSTGRES_USER: 'nile',
+  POSTGRES_PASSWORD: 'nile',
+  POSTGRES_DB: 'nile_test',
+  REDIS_HOST: 'localhost',
+  RABBITMQ_HOST: 'localhost',
+  RABBITMQ_USER: 'nile',
+  RABBITMQ_PASSWORD: 'nile',
 });
 
 const build = () => buildContainer({ config, processName: 'test' });

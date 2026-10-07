@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { ConfigError, loadConfig } from '../../../../src/lib/config/load-config.js';
 
 const validEnv = {
-  DATABASE_URL: 'postgres://nile:secret-db-pass@localhost:5432/nile',
-  REDIS_URL: 'redis://localhost:6379',
-  RABBITMQ_URL: 'amqp://nile:secret-mq-pass@localhost:5672',
+  POSTGRES_HOST: 'localhost',
+  POSTGRES_USER: 'nile',
+  POSTGRES_PASSWORD: 'secret-db-pass',
+  POSTGRES_DB: 'nile',
+  REDIS_HOST: 'localhost',
+  RABBITMQ_HOST: 'localhost',
+  RABBITMQ_USER: 'nile',
+  RABBITMQ_PASSWORD: 'secret-mq-pass',
 };
 
 function loadError(env: NodeJS.ProcessEnv): ConfigError {
@@ -27,9 +32,9 @@ describe('loadConfig', () => {
         http: { port: 3000 },
         worker: { healthPort: 3001 },
         log: { level: 'info' },
-        db: { url: validEnv.DATABASE_URL, poolMax: 10 },
-        redis: { url: validEnv.REDIS_URL },
-        rabbitmq: { url: validEnv.RABBITMQ_URL },
+        db: { url: 'postgres://nile:secret-db-pass@localhost:5432/nile', poolMax: 10 },
+        redis: { url: 'redis://localhost:6379/0' },
+        rabbitmq: { url: 'amqp://nile:secret-mq-pass@localhost:5672' },
         outbox: { pollIntervalMs: 1000, batchSize: 50, maxAttempts: 10 },
       });
     });
@@ -53,21 +58,52 @@ describe('loadConfig', () => {
       expect(config.outbox).toEqual({ pollIntervalMs: 500, batchSize: 100, maxAttempts: 5 });
     });
 
-    it('accepts postgresql://, rediss:// and amqps:// schemes', () => {
-      expect(() =>
-        loadConfig({
-          DATABASE_URL: 'postgresql://u:p@db:5432/nile',
-          REDIS_URL: 'rediss://cache:6380',
-          RABBITMQ_URL: 'amqps://u:p@mq:5671',
-        }),
-      ).not.toThrow();
+    it('builds connection URLs from host, port, credentials and options', () => {
+      const config = loadConfig({
+        ...validEnv,
+        POSTGRES_HOST: 'db',
+        POSTGRES_PORT: '6543',
+        REDIS_HOST: 'cache',
+        REDIS_PORT: '6380',
+        REDIS_PASSWORD: 'redis-pass',
+        REDIS_DB: '15',
+        REDIS_TLS: 'true',
+        RABBITMQ_HOST: 'mq',
+        RABBITMQ_PORT: '5671',
+        RABBITMQ_VHOST: 'nile',
+        RABBITMQ_TLS: 'true',
+      });
+
+      expect(config.db.url).toBe('postgres://nile:secret-db-pass@db:6543/nile');
+      expect(config.redis.url).toBe('rediss://:redis-pass@cache:6380/15');
+      expect(config.rabbitmq.url).toBe('amqps://nile:secret-mq-pass@mq:5671/nile');
+    });
+
+    it('percent-encodes credentials, database and vhost names', () => {
+      const config = loadConfig({
+        ...validEnv,
+        POSTGRES_USER: 'app@corp',
+        POSTGRES_PASSWORD: 'p@ss:w/rd#?',
+        POSTGRES_DB: 'my db',
+        REDIS_PASSWORD: 'r@d:s',
+        RABBITMQ_PASSWORD: 'm/q@',
+        RABBITMQ_VHOST: '/',
+      });
+
+      expect(config.db.url).toBe(
+        'postgres://app%40corp:p%40ss%3Aw%2Frd%23%3F@localhost:5432/my%20db',
+      );
+      expect(new URL(config.db.url).password).toBe('p%40ss%3Aw%2Frd%23%3F');
+      expect(config.redis.url).toBe('redis://:r%40d%3As@localhost:6379/0');
+      expect(config.rabbitmq.url).toBe('amqp://nile:m%2Fq%40@localhost:5672/%2F');
     });
 
     it('treats empty values as unset so defaults apply', () => {
-      const config = loadConfig({ ...validEnv, PORT: '', LOG_LEVEL: '  ' });
+      const config = loadConfig({ ...validEnv, PORT: '', LOG_LEVEL: '  ', REDIS_PASSWORD: '' });
 
       expect(config.http.port).toBe(3000);
       expect(config.log.level).toBe('info');
+      expect(config.redis.url).toBe('redis://localhost:6379/0');
     });
 
     it('ignores unrelated environment variables', () => {
@@ -91,18 +127,18 @@ describe('loadConfig', () => {
     it('reports every missing required variable at once', () => {
       const error = loadError({});
 
-      expect(error.message).toContain('DATABASE_URL');
-      expect(error.message).toContain('REDIS_URL');
-      expect(error.message).toContain('RABBITMQ_URL');
+      for (const name of Object.keys(validEnv)) {
+        expect(error.message).toContain(name);
+      }
     });
 
     it('reports a single missing variable', () => {
-      const { REDIS_URL: _omitted, ...env } = validEnv;
+      const { REDIS_HOST: _omitted, ...env } = validEnv;
 
       const error = loadError(env);
 
-      expect(error.message).toContain('REDIS_URL');
-      expect(error.message).not.toContain('DATABASE_URL');
+      expect(error.message).toContain('REDIS_HOST');
+      expect(error.message).not.toContain('POSTGRES_HOST');
     });
   });
 
@@ -117,10 +153,12 @@ describe('loadConfig', () => {
       ['DB_POOL_MAX', '0'],
       ['DB_POOL_MAX', '101'],
       ['OUTBOX_BATCH_SIZE', '-1'],
-      ['DATABASE_URL', 'not a url'],
-      ['DATABASE_URL', 'mysql://u:p@localhost/nile'],
-      ['REDIS_URL', 'http://localhost:6379'],
-      ['RABBITMQ_URL', 'redis://localhost:5672'],
+      ['POSTGRES_PORT', 'abc'],
+      ['REDIS_PORT', '70000'],
+      ['REDIS_DB', '16'],
+      ['REDIS_TLS', 'maybe'],
+      ['RABBITMQ_PORT', '0'],
+      ['RABBITMQ_TLS', 'yes please'],
     ])('rejects %s=%s', (name, value) => {
       const error = loadError({ ...validEnv, [name]: value });
 
@@ -131,11 +169,12 @@ describe('loadConfig', () => {
     it('never includes variable values (secrets) in the error message', () => {
       const error = loadError({
         ...validEnv,
-        DATABASE_URL: 'mysql://nile:super-secret-pass@localhost/nile',
+        POSTGRES_PASSWORD: 'super-secret-pass',
         PORT: 'not-a-number',
+        POSTGRES_PORT: 'super-secret-port',
       });
 
-      expect(error.message).not.toContain('super-secret-pass');
+      expect(error.message).not.toContain('super-secret');
       expect(error.message).not.toContain('secret-mq-pass');
     });
   });

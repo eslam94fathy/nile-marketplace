@@ -11,13 +11,26 @@ import { TOKENS } from '../../src/lib/dependency-injection/tokens.js';
 import type { Logger } from '../../src/lib/logger/logger.js';
 
 /** Fixed configuration for tests. Infrastructure clients connect lazily, so building it is free. */
-export const testConfig: Config = loadConfig({
+const loadedTestConfig = loadConfig({
   NODE_ENV: 'test',
   LOG_LEVEL: 'silent',
-  DATABASE_URL: process.env.TEST_DATABASE_URL ?? 'postgres://nile:nile@localhost:5432/nile_test',
-  REDIS_URL: process.env.TEST_REDIS_URL ?? 'redis://localhost:6379/15',
-  RABBITMQ_URL: 'amqp://nile:nile@localhost:5672',
+  POSTGRES_HOST: 'localhost',
+  POSTGRES_USER: 'nile',
+  POSTGRES_PASSWORD: 'nile',
+  POSTGRES_DB: 'nile_test',
+  REDIS_HOST: 'localhost',
+  REDIS_DB: '15',
+  RABBITMQ_HOST: 'localhost',
+  RABBITMQ_USER: 'nile',
+  RABBITMQ_PASSWORD: 'nile',
 });
+
+// TEST_DATABASE_URL / TEST_REDIS_URL override the targets, as in tests/integration/support.
+export const testConfig: Config = {
+  ...loadedTestConfig,
+  db: { ...loadedTestConfig.db, url: process.env.TEST_DATABASE_URL ?? loadedTestConfig.db.url },
+  redis: { url: process.env.TEST_REDIS_URL ?? loadedTestConfig.redis.url },
+};
 
 export interface TestContainerOptions {
   /** Replaces the logger (e.g. a capturing logger). */
