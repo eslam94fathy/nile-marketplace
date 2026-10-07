@@ -40,7 +40,7 @@ The blueprint (`docs/marketplace_blueprint.md`) fixes the architecture: no ORM, 
 
 ### Conventions
 
-- **Explicit injection tokens.** Every constructor parameter of an injectable uses `@inject(TOKEN)`. We never rely on `emitDecoratorMetadata`, which `tsx`, esbuild and Vitest don't emit.
+- **Explicit injection tokens.** Every constructor parameter of an injectable uses `@inject(TOKEN)`. We never rely on `emitDecoratorMetadata`, which `tsx`, esbuild and Vitest don't emit. An ESLint rule (`no-restricted-syntax` in `eslint.config.js`) enforces this, because tsyringe silently injects `undefined` when a trailing parameter has no token.
 - **Single composition root.** `src/lib/dependency-injection/container.ts`. Modules expose a `registerXModule(container)` function.
 - **Identifiers.** `uuid` primary keys defaulting to PostgreSQL 18's `uuidv7()` (time-ordered, which suits keyset pagination and index locality).
 - **Time.** `timestamptz` everywhere.

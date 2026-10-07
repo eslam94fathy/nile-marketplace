@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 // Integration global setup (test database, migrations) is added in Task 1.18.
 export default defineConfig({
   test: {
+    setupFiles: ['tests/setup/reflect-metadata.ts'],
     projects: [
       {
         extends: true,

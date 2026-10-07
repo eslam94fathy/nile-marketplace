@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:int": "vitest run --project integration",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "depcruise": "depcruise src",
@@ -51,6 +51,7 @@
     "helmet": "^8.3.0",
     "pino": "^10.4.0",
     "reflect-metadata": "^0.2.2",
+    "tsyringe": "^4.10.0",
     "zod": "^4.6.5"
   }
 }

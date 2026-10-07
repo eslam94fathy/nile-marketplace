@@ -3,19 +3,18 @@ import 'reflect-metadata';
 
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './lib/config/load-config.js';
+import { buildContainer } from './lib/dependency-injection/container.js';
+import { TOKENS } from './lib/dependency-injection/tokens.js';
 import { closeServer, listen } from './lib/http/http-server.js';
 import { createGracefulShutdown } from './lib/lifecycle/graceful-shutdown.js';
-import { createLogger } from './lib/logger/logger.js';
+import type { Logger } from './lib/logger/logger.js';
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const logger = createLogger({
-    name: 'api',
-    level: config.log.level,
-    pretty: config.nodeEnv === 'development',
-  });
+  const container = buildContainer({ config, processName: 'api' });
+  const logger = container.resolve<Logger>(TOKENS.Logger);
 
   const shutdown = createGracefulShutdown({ logger, timeoutMs: SHUTDOWN_TIMEOUT_MS });
 
