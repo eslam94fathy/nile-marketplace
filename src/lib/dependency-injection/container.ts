@@ -7,6 +7,10 @@ import { getCorrelationId } from '../correlation/correlation-context.js';
 import { Database } from '../database/database.js';
 import { createPool } from '../database/pool.provider.js';
 import { createLogger, type Logger } from '../logger/logger.js';
+import {
+  PgTransactionManager,
+  type TransactionManager,
+} from '../transaction/transaction-manager.js';
 import { TOKENS } from './tokens.js';
 
 export interface BuildContainerOptions {
@@ -40,6 +44,9 @@ export function buildContainer({
   const pool = createPool({ db: config.db, applicationName: `nile-${processName}`, logger });
   container.register<Pool>(TOKENS.PgPool, { useValue: pool });
   container.register<Database>(TOKENS.Database, { useValue: new Database(pool) });
+  container.register<TransactionManager>(TOKENS.TransactionManager, {
+    useValue: new PgTransactionManager(pool, logger),
+  });
 
   const redis = createRedis({
     url: config.redis.url,
