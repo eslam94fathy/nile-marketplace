@@ -6,6 +6,7 @@ import type { Config } from '../config/config.schema.js';
 import { getCorrelationId } from '../correlation/correlation-context.js';
 import { Database } from '../database/database.js';
 import { createPool } from '../database/pool.provider.js';
+import { type OutboxWriter, PgOutboxWriter } from '../events/outbox.writer.js';
 import { createLogger, type Logger } from '../logger/logger.js';
 import {
   PgTransactionManager,
@@ -47,6 +48,11 @@ export function buildContainer({
   container.register<TransactionManager>(TOKENS.TransactionManager, {
     useValue: new PgTransactionManager(pool, logger),
   });
+  const database = container.resolve<Database>(TOKENS.Database);
+  container.register<OutboxWriter>(TOKENS.OutboxWriter, {
+    useValue: new PgOutboxWriter(database),
+  });
+  // The outbox relay and message publisher are worker-only; they are wired in worker.ts (Task 1.17).
 
   const redis = createRedis({
     url: config.redis.url,

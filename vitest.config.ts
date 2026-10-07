@@ -17,6 +17,8 @@ export default defineConfig({
         test: {
           name: 'integration',
           include: ['tests/integration/**/*.test.ts'],
+          // Files share one test database (and broker), so they run one at a time.
+          fileParallelism: false,
         },
       },
     ],

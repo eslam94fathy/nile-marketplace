@@ -11,5 +11,6 @@ export const TOKENS = {
   PgPool: Symbol('PgPool'),
   Database: Symbol('Database'),
   TransactionManager: Symbol('TransactionManager'),
+  OutboxWriter: Symbol('OutboxWriter'),
   Redis: Symbol('Redis'),
 } as const;
