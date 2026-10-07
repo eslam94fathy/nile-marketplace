@@ -12,5 +12,6 @@ export const TOKENS = {
   Database: Symbol('Database'),
   TransactionManager: Symbol('TransactionManager'),
   OutboxWriter: Symbol('OutboxWriter'),
+  AuditLogger: Symbol('AuditLogger'),
   Redis: Symbol('Redis'),
 } as const;

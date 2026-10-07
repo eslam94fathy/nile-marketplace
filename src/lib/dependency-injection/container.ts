@@ -1,6 +1,7 @@
 import { container as rootContainer, type DependencyContainer } from 'tsyringe';
 import type { Redis } from 'ioredis';
 import type { Pool } from 'pg';
+import { type AuditLogger, PgAuditLogger } from '../audit/audit.logger.js';
 import { createRedis } from '../cache/redis.provider.js';
 import type { Config } from '../config/config.schema.js';
 import { getCorrelationId } from '../correlation/correlation-context.js';
@@ -52,6 +53,7 @@ export function buildContainer({
   container.register<OutboxWriter>(TOKENS.OutboxWriter, {
     useValue: new PgOutboxWriter(database),
   });
+  container.register<AuditLogger>(TOKENS.AuditLogger, { useValue: new PgAuditLogger(database) });
   // The outbox relay and message publisher are worker-only; they are wired in worker.ts (Task 1.17).
 
   const redis = createRedis({
