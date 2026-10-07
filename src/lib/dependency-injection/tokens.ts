@@ -13,5 +13,8 @@ export const TOKENS = {
   TransactionManager: Symbol('TransactionManager'),
   OutboxWriter: Symbol('OutboxWriter'),
   AuditLogger: Symbol('AuditLogger'),
+  // Worker-only (registerWorkerDependencies)
+  MessagePublisher: Symbol('MessagePublisher'),
+  OutboxRelay: Symbol('OutboxRelay'),
   Redis: Symbol('Redis'),
 } as const;

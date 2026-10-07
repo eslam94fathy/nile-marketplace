@@ -19,6 +19,8 @@ export const envSchema = z.object({
 
   RABBITMQ_URL: z.url({ protocol: /^amqps?$/, error: 'must be an amqp:// or amqps:// URL' }),
 
+  WORKER_HEALTH_PORT: port.default(3001),
+
   OUTBOX_POLL_INTERVAL_MS: positiveInt.default(1000),
   OUTBOX_BATCH_SIZE: positiveInt.max(1000).default(50),
   OUTBOX_MAX_ATTEMPTS: positiveInt.default(10),
@@ -29,6 +31,10 @@ export const configSchema = envSchema.transform((env) => ({
   nodeEnv: env.NODE_ENV,
   http: {
     port: env.PORT,
+  },
+  worker: {
+    /** Health endpoints of the worker process (it serves no other HTTP). */
+    healthPort: env.WORKER_HEALTH_PORT,
   },
   log: {
     level: env.LOG_LEVEL,

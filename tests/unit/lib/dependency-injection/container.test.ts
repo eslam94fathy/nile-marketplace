@@ -2,7 +2,10 @@ import { inject, injectable } from 'tsyringe';
 import { describe, expect, it } from 'vitest';
 import type { Config } from '../../../../src/lib/config/config.schema.js';
 import { loadConfig } from '../../../../src/lib/config/load-config.js';
-import { buildContainer } from '../../../../src/lib/dependency-injection/container.js';
+import {
+  buildContainer,
+  registerWorkerDependencies,
+} from '../../../../src/lib/dependency-injection/container.js';
 import { TOKENS } from '../../../../src/lib/dependency-injection/tokens.js';
 import type { Logger } from '../../../../src/lib/logger/logger.js';
 
@@ -41,9 +44,27 @@ class ServicePartiallyMissingToken {
   ) {}
 }
 
+const WORKER_ONLY = new Set<symbol>([TOKENS.MessagePublisher, TOKENS.OutboxRelay]);
+
 describe('buildContainer', () => {
-  it.each(Object.entries(TOKENS))('resolves the %s token', (_name, token) => {
-    expect(build().resolve(token)).toBeDefined();
+  it.each(Object.entries(TOKENS).filter(([, token]) => !WORKER_ONLY.has(token)))(
+    'resolves the %s token',
+    (_name, token) => {
+      expect(build().resolve(token)).toBeDefined();
+    },
+  );
+
+  it('does not register worker-only dependencies in the base container', () => {
+    const container = build();
+
+    for (const token of WORKER_ONLY) expect(container.isRegistered(token)).toBe(false);
+  });
+
+  it('resolves every token once worker dependencies are registered', () => {
+    const container = build();
+    registerWorkerDependencies(container);
+
+    for (const token of Object.values(TOKENS)) expect(container.resolve(token)).toBeDefined();
   });
 
   it('registers the provided config instance', () => {

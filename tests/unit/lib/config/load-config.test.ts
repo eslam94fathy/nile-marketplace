@@ -25,6 +25,7 @@ describe('loadConfig', () => {
       expect(config).toEqual({
         nodeEnv: 'development',
         http: { port: 3000 },
+        worker: { healthPort: 3001 },
         log: { level: 'info' },
         db: { url: validEnv.DATABASE_URL, poolMax: 10 },
         redis: { url: validEnv.REDIS_URL },
