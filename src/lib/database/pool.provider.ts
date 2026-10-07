@@ -1,5 +1,6 @@
 import pg, { type Pool } from 'pg';
 import type { Config } from '../config/config.schema.js';
+import { withoutCorrelation } from '../correlation/correlation-context.js';
 import type { Logger } from '../logger/logger.js';
 
 /** Upper bound for a single statement; protects the pool from runaway queries. */
@@ -33,7 +34,7 @@ export function createPool({ db, applicationName, logger }: CreatePoolOptions): 
 
   // Without this listener, an error on an idle client (e.g. server restart) crashes the process.
   pool.on('error', (err) => {
-    logger.error({ err }, 'Idle PostgreSQL client error');
+    withoutCorrelation(() => logger.error({ err }, 'Idle PostgreSQL client error'));
   });
 
   return pool;

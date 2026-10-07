@@ -5,7 +5,6 @@ import { Database } from '../../../../src/lib/database/database.js';
 import { InternalError } from '../../../../src/lib/error/errors.js';
 import { PgOutboxWriter } from '../../../../src/lib/events/outbox.writer.js';
 import { PgTransactionManager } from '../../../../src/lib/transaction/transaction-manager.js';
-import { migrateTestDatabase } from '../../support/migrate.js';
 import { createTestPool, silentLogger } from '../../support/test-database.js';
 
 const SELLER_ID = '0199b3c4-0000-7000-8000-00000000a001';
@@ -24,7 +23,6 @@ describe('PgOutboxWriter', () => {
   };
 
   beforeAll(async () => {
-    await migrateTestDatabase();
     pool = createTestPool();
     db = new Database(pool);
     transactions = new PgTransactionManager(pool, silentLogger);

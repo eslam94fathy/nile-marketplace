@@ -10,7 +10,6 @@ import { PgOutboxWriter } from '../../src/lib/events/outbox.writer.js';
 import { PgTransactionManager } from '../../src/lib/transaction/transaction-manager.js';
 import { type RunningWorker, startWorker } from '../../src/start-worker.js';
 import { testConfig } from '../support/test-container.js';
-import { migrateTestDatabase } from './support/migrate.js';
 import { captureMessages } from './support/rabbitmq.js';
 import { createTestPool, silentLogger } from './support/test-database.js';
 
@@ -58,7 +57,6 @@ describe('worker', () => {
   }
 
   beforeAll(async () => {
-    await migrateTestDatabase();
     pool = createTestPool();
     db = new Database(pool);
     transactions = new PgTransactionManager(pool, silentLogger);
@@ -104,10 +102,15 @@ describe('worker', () => {
     worker = await startWorker({ config: workerConfig(), exit });
 
     await consumer.waitFor(120, 10_000);
-    const { rows } = await db.query<{ n: number }>(
-      'SELECT count(*)::int AS n FROM outbox_events WHERE published_at IS NULL',
-    );
-    expect(rows[0]?.n).toBe(0);
+    // The broker delivers a batch as soon as it confirms it, which can be before the relay
+    // commits `published_at`; wait for the database rather than assuming it is already updated.
+    await waitUntil(async () => {
+      const { rows } = await db.query<{ n: number }>(
+        'SELECT count(*)::int AS n FROM outbox_events WHERE published_at IS NULL',
+      );
+      return rows[0]?.n === 0;
+    });
+    expect(consumer.messages).toHaveLength(120);
     await consumer.close();
   });
 

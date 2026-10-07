@@ -1,4 +1,3 @@
-import { Writable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
 import express, { type Express } from 'express';
 import request from 'supertest';
@@ -8,7 +7,7 @@ import {
   CORRELATION_ID_HEADER,
   correlationMiddleware,
 } from '../../../../src/lib/correlation/correlation.middleware.js';
-import { createLogger } from '../../../../src/lib/logger/logger.js';
+import { captureLogger } from '../../../support/capture-logger.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -84,16 +83,7 @@ describe('correlationMiddleware', () => {
   });
 
   it('adds the request correlation ID to log lines written in the handler', async () => {
-    const lines: Record<string, unknown>[] = [];
-    const logger = createLogger(
-      { name: 'test', level: 'info', pretty: false, getCorrelationId },
-      new Writable({
-        write(chunk: Buffer, _encoding, callback) {
-          lines.push(JSON.parse(chunk.toString()) as Record<string, unknown>);
-          callback();
-        },
-      }),
-    );
+    const { logger, lines } = captureLogger();
     const app = express();
     app.use(correlationMiddleware());
     app.get('/log', async (_req, res) => {

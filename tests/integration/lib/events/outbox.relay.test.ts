@@ -13,7 +13,6 @@ import type {
   OutgoingMessage,
 } from '../../../../src/pkg/messaging/message-publisher.js';
 import { captureLogger } from '../../../support/capture-logger.js';
-import { migrateTestDatabase } from '../../support/migrate.js';
 import { createTestPool, silentLogger } from '../../support/test-database.js';
 
 /** Records published messages; can be told to fail or delay specific event types. */
@@ -79,7 +78,6 @@ describe('OutboxRelay', () => {
     ).rows;
 
   beforeAll(async () => {
-    await migrateTestDatabase();
     pool = createTestPool(5);
     db = new Database(pool);
     transactions = new PgTransactionManager(pool, silentLogger);

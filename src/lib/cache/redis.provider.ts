@@ -1,4 +1,5 @@
 import { Redis } from 'ioredis';
+import { withoutCorrelation } from '../correlation/correlation-context.js';
 import type { Logger } from '../logger/logger.js';
 
 const CONNECT_TIMEOUT_MS = 5_000;
@@ -30,8 +31,11 @@ export function createRedis({ url, connectionName, logger }: CreateRedisOptions)
   });
 
   // Without an error listener ioredis reports "Unhandled error event" on every failed reconnect.
-  redis.on('error', (err) => logger.warn({ err }, 'Redis connection error'));
-  redis.on('ready', () => logger.info('Redis connection ready'));
+  // Connection events belong to no request, even when a request's command triggered them.
+  redis.on('error', (err) =>
+    withoutCorrelation(() => logger.warn({ err }, 'Redis connection error')),
+  );
+  redis.on('ready', () => withoutCorrelation(() => logger.info('Redis connection ready')));
 
   return redis;
 }

@@ -1,4 +1,6 @@
+import type { Express } from 'express';
 import type { Redis } from 'ioredis';
+import { createApp } from '../../src/app.js';
 import type { Pool } from 'pg';
 import type { DependencyContainer } from 'tsyringe';
 import { closeRedis } from '../../src/lib/cache/redis.provider.js';
@@ -35,6 +37,15 @@ export function createTestContainer(options: TestContainerOptions = {}): Depende
     container.register<Logger>(TOKENS.Logger, { useValue: options.logger });
   }
   return container;
+}
+
+/** The real Express app wired to a test container. Close the container if it connected. */
+export function createTestApp(options: TestContainerOptions = {}): {
+  app: Express;
+  container: DependencyContainer;
+} {
+  const container = createTestContainer(options);
+  return { app: createApp(container), container };
 }
 
 /** Closes the infrastructure clients of a test container that actually connected. */

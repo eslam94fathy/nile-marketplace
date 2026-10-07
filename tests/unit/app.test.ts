@@ -1,9 +1,9 @@
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { createApp } from '../../src/app.js';
-import { createTestContainer } from '../support/test-container.js';
+import { createTestApp } from '../support/test-container.js';
 
-const app = () => createApp(createTestContainer());
+// Infrastructure clients connect lazily and these requests never reach them.
+const app = () => createTestApp().app;
 
 describe('createApp', () => {
   it('responds 404 with the standard error shape for unknown routes', async () => {

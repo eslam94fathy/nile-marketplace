@@ -1,10 +1,9 @@
 import type { DependencyContainer } from 'tsyringe';
 import request from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createApp } from '../../../src/app.js';
 import {
   closeTestContainer,
-  createTestContainer,
+  createTestApp,
   type TestContainerOptions,
 } from '../../support/test-container.js';
 
@@ -12,9 +11,9 @@ describe('health endpoints', () => {
   const containers: DependencyContainer[] = [];
 
   function app(options?: TestContainerOptions) {
-    const container = createTestContainer(options);
+    const { app: instance, container } = createTestApp(options);
     containers.push(container);
-    return createApp(container);
+    return instance;
   }
 
   afterEach(async () => {

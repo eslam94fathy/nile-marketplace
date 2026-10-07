@@ -5,6 +5,7 @@ import {
   getCorrelationId,
   isValidCorrelationId,
   runWithCorrelationId,
+  withoutCorrelation,
 } from '../../../../src/lib/correlation/correlation-context.js';
 
 describe('correlation context', () => {
@@ -40,6 +41,14 @@ describe('correlation context', () => {
       });
 
     expect(await Promise.all([run('a', 20), run('b', 5), run('c', 10)])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('withoutCorrelation() hides the context and restores it afterwards', async () => {
+    await runWithCorrelationId('outer', async () => {
+      expect(withoutCorrelation(() => getCorrelationId())).toBeUndefined();
+      expect(await withoutCorrelation(async () => getCorrelationId())).toBeUndefined();
+      expect(getCorrelationId()).toBe('outer');
+    });
   });
 
   it('lets a nested context override and then restore the outer one', () => {

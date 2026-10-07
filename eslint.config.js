@@ -22,7 +22,8 @@ const INJECT_TOKEN_RULES = [
 
 export default tseslint.config(
   {
-    ignores: ['dist/', 'coverage/', 'node_modules/'],
+    // Architecture fixtures contain deliberately broken imports and are not in tsconfig.
+    ignores: ['dist/', 'coverage/', 'node_modules/', 'tests/fixtures/architecture/'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -31,6 +32,10 @@ export default tseslint.config(
       ecmaVersion: 2023,
       sourceType: 'module',
       globals: globals.node,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     rules: {
       '@typescript-eslint/no-unused-vars': [
@@ -39,7 +44,22 @@ export default tseslint.config(
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-restricted-syntax': ['error', ...INJECT_TOKEN_RULES],
+
+      // Type-aware rules for asynchronous code: an un-awaited promise loses its errors and
+      // breaks transaction and correlation scoping.
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      // Express 5 handles promises returned by handlers, so async route handlers are allowed.
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        { checksVoidReturn: { arguments: false } },
+      ],
     },
+  },
+  {
+    // Plain JS config files are outside the TypeScript project.
+    files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
+    extends: [tseslint.configs.disableTypeChecked],
   },
   prettier,
 );

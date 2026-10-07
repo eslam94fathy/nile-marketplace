@@ -26,6 +26,14 @@ export function runWithCorrelationId<T>(correlationId: string, fn: () => T): T {
   return storage.run({ correlationId }, fn);
 }
 
+/**
+ * Runs `fn` outside any correlation context. For infrastructure events that a request merely
+ * triggered (e.g. a lazy connection becoming ready), so their logs are not attributed to it.
+ */
+export function withoutCorrelation<T>(fn: () => T): T {
+  return storage.exit(fn);
+}
+
 /** The current correlation ID, or undefined outside any request/message context. */
 export function getCorrelationId(): string | undefined {
   return storage.getStore()?.correlationId;

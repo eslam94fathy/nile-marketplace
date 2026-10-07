@@ -1,7 +1,10 @@
 import { ESLint } from 'eslint';
+import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 
-const eslint = new ESLint();
+// The snippets are virtual files outside the TypeScript project, so type-aware rules are off;
+// the rule under test is purely syntactic.
+const eslint = new ESLint({ overrideConfig: tseslint.configs.disableTypeChecked });
 
 async function violations(code: string): Promise<number> {
   const [result] = await eslint.lintText(code, { filePath: 'src/lib/example.ts' });

@@ -5,7 +5,6 @@ import { runWithCorrelationId } from '../../../../src/lib/correlation/correlatio
 import { Database } from '../../../../src/lib/database/database.js';
 import { InternalError } from '../../../../src/lib/error/errors.js';
 import { PgTransactionManager } from '../../../../src/lib/transaction/transaction-manager.js';
-import { migrateTestDatabase } from '../../support/migrate.js';
 import { createTestPool, silentLogger } from '../../support/test-database.js';
 
 const ADMIN_ID = '0199b3c4-0000-7000-8000-00000000d001';
@@ -28,7 +27,6 @@ describe('PgAuditLogger', () => {
     (await db.query<{ n: number }>('SELECT count(*)::int AS n FROM audit_logs')).rows[0]?.n;
 
   beforeAll(async () => {
-    await migrateTestDatabase();
     pool = createTestPool();
     db = new Database(pool);
     transactions = new PgTransactionManager(pool, silentLogger);

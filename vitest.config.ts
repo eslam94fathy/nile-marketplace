@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitest/config';
 
-// Integration global setup (test database, migrations) is added in Task 1.18.
 export default defineConfig({
   test: {
     setupFiles: ['tests/setup/reflect-metadata.ts'],
@@ -17,6 +16,8 @@ export default defineConfig({
         test: {
           name: 'integration',
           include: ['tests/integration/**/*.test.ts'],
+          // Creates and migrates the test database once (needs `docker compose up -d --wait`).
+          globalSetup: ['tests/integration/global-setup.ts'],
           // Files share one test database (and broker), so they run one at a time.
           fileParallelism: false,
         },

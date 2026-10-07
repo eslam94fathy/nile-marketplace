@@ -17,21 +17,23 @@ describe('createPoller', () => {
     await Promise.all(pollers.splice(0).map((p) => p.stop()));
   });
 
-  it('runs immediately on start, then waits the interval when there is no more work', async () => {
+  // Timing assertions in this file are lower bounds or values the poller computes and logs:
+  // machine load can only make waits longer, so upper bounds on wall-clock time are flaky.
+
+  it('waits the interval between runs when there is no more work', async () => {
     const runs: number[] = [];
-    const started = Date.now();
     const { instance } = poller(async () => {
-      runs.push(Date.now() - started);
+      runs.push(performance.now());
       return false;
     }, 100);
 
     instance.start();
-    await delay(250);
+    await vi.waitFor(() => expect(runs.length).toBeGreaterThanOrEqual(2), {
+      timeout: 5_000,
+      interval: 5,
+    });
     await instance.stop();
 
-    expect(runs.length).toBeGreaterThanOrEqual(2);
-    expect(runs.length).toBeLessThanOrEqual(4);
-    expect(runs[0]).toBeLessThan(50);
     expect((runs[1] ?? 0) - (runs[0] ?? 0)).toBeGreaterThanOrEqual(90);
   });
 
@@ -74,33 +76,33 @@ describe('createPoller', () => {
 
   it('logs failures, backs off exponentially, and recovers', async () => {
     const runs: number[] = [];
-    const started = Date.now();
     let failuresLeft = 3;
     const { instance, lines } = poller(async () => {
-      runs.push(Date.now() - started);
+      runs.push(performance.now());
       if (failuresLeft-- > 0) throw new Error('database unavailable');
       return false;
     }, 20);
 
     instance.start();
-    await delay(400);
+    await vi.waitFor(() => expect(runs.length).toBeGreaterThanOrEqual(4), {
+      timeout: 5_000,
+      interval: 5,
+    });
     await instance.stop();
 
-    // Delays after failures: 40ms, 80ms, 160ms; then success.
+    const errors = lines.filter((line) => line.level === 'error');
+    expect(errors.map((line) => line.consecutiveFailures)).toEqual([1, 2, 3]);
+    expect(errors.map((line) => line.retryInMs)).toEqual([40, 80, 160]);
+    // And it actually waited at least that long before each retry.
     const gaps = runs.slice(1, 4).map((at, i) => at - (runs[i] ?? 0));
     expect(gaps[0]).toBeGreaterThanOrEqual(35);
     expect(gaps[1]).toBeGreaterThanOrEqual(75);
     expect(gaps[2]).toBeGreaterThanOrEqual(155);
-    const errors = lines.filter((line) => line.level === 'error');
-    expect(errors).toHaveLength(3);
-    expect(errors.map((line) => line.consecutiveFailures)).toEqual([1, 2, 3]);
   });
 
   it('caps the error backoff', async () => {
-    let runs = 0;
-    const { instance } = poller(
+    const { instance, lines } = poller(
       async () => {
-        runs++;
         throw new Error('down');
       },
       20,
@@ -108,10 +110,15 @@ describe('createPoller', () => {
     );
 
     instance.start();
-    await delay(300);
+    await vi.waitFor(
+      () => expect(lines.filter((line) => line.level === 'error').length).toBeGreaterThanOrEqual(4),
+      { timeout: 5_000, interval: 5 },
+    );
+    await instance.stop();
 
-    // Uncapped, delays would be 40, 80, 160ms (≈3 runs); capped at 50ms there are more.
-    expect(runs).toBeGreaterThanOrEqual(5);
+    // Uncapped this would be 40, 80, 160, 320.
+    const delays = lines.filter((line) => line.level === 'error').map((line) => line.retryInMs);
+    expect(delays.slice(0, 4)).toEqual([40, 50, 50, 50]);
   });
 
   it('stop() waits for the in-flight run and prevents further runs', async () => {

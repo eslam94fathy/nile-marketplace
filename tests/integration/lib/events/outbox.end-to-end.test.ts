@@ -6,7 +6,6 @@ import { type EventEnvelope, OutboxRelay } from '../../../../src/lib/events/outb
 import { PgOutboxWriter } from '../../../../src/lib/events/outbox.writer.js';
 import { PgTransactionManager } from '../../../../src/lib/transaction/transaction-manager.js';
 import { RabbitMqPublisher } from '../../../../src/pkg/messaging/rabbitmq-publisher.js';
-import { migrateTestDatabase } from '../../support/migrate.js';
 import { captureMessages, TEST_RABBITMQ_URL } from '../../support/rabbitmq.js';
 import { createTestPool, silentLogger } from '../../support/test-database.js';
 
@@ -19,7 +18,6 @@ describe('outbox end to end: transaction → outbox → relay → RabbitMQ', () 
   let publisher: RabbitMqPublisher;
 
   beforeAll(async () => {
-    await migrateTestDatabase();
     pool = createTestPool();
     db = new Database(pool);
     await db.query('TRUNCATE outbox_events');

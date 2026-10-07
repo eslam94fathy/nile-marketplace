@@ -1,29 +1,6 @@
-import { Writable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
-import {
-  createLogger,
-  REDACTED_PLACEHOLDER,
-  type LoggerOptions,
-} from '../../../../src/lib/logger/logger.js';
-
-type LogLine = Record<string, unknown>;
-
-function captureLogger(options: Partial<LoggerOptions> = {}) {
-  const lines: LogLine[] = [];
-  const destination = new Writable({
-    write(chunk: Buffer, _encoding, callback) {
-      lines.push(JSON.parse(chunk.toString()) as LogLine);
-      callback();
-    },
-  });
-
-  const logger = createLogger(
-    { name: 'test', level: 'trace', pretty: false, ...options },
-    destination,
-  );
-
-  return { logger, lines };
-}
+import { REDACTED_PLACEHOLDER } from '../../../../src/lib/logger/logger.js';
+import { captureLogger, type LogLine } from '../../../support/capture-logger.js';
 
 describe('createLogger', () => {
   describe('output format', () => {
@@ -151,7 +128,7 @@ describe('createLogger', () => {
     });
 
     it('omits correlationId when no provider is configured', () => {
-      const { logger, lines } = captureLogger();
+      const { logger, lines } = captureLogger({ getCorrelationId: undefined });
 
       logger.info('no provider');
 

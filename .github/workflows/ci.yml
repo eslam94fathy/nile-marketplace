@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4 # version from package.json "packageManager"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Integration tests use the same services as local development.
+      - name: Start PostgreSQL, Redis and RabbitMQ
+        run: docker compose up -d --wait --wait-timeout 180
+
+      - name: Lint, typecheck, format, build and test
+        run: pnpm check
+
+      - name: Architecture rules (CLI report)
+        run: pnpm depcruise
+
+      - name: Service logs
+        if: failure()
+        run: docker compose logs

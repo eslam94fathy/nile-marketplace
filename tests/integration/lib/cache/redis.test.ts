@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import { afterEach, describe, expect, it } from 'vitest';
-import { closeRedis } from '../../../../src/lib/cache/redis.provider.js';
-import { createTestRedis } from '../../support/test-redis.js';
+import { closeRedis, createRedis } from '../../../../src/lib/cache/redis.provider.js';
+import { runWithCorrelationId } from '../../../../src/lib/correlation/correlation-context.js';
+import { captureLogger } from '../../../support/capture-logger.js';
+import { createTestRedis, TEST_REDIS_URL } from '../../support/test-redis.js';
 
 describe('Redis client', () => {
   const clients: Redis[] = [];
@@ -23,6 +25,19 @@ describe('Redis client', () => {
 
     expect(await redis.ping()).toBe('PONG');
     expect(redis.status).toBe('ready');
+  });
+
+  it('does not attribute connection events to the request that triggered them', async () => {
+    const { logger, lines } = captureLogger();
+    const redis = createRedis({ url: TEST_REDIS_URL, connectionName: 'nile-test', logger });
+    clients.push(redis);
+
+    // The first command of a request opens the lazy connection.
+    await runWithCorrelationId('request-that-connected', () => redis.ping());
+
+    const ready = lines.find((line) => line.msg === 'Redis connection ready');
+    expect(ready).toBeDefined();
+    expect(ready).not.toHaveProperty('correlationId');
   });
 
   it('round-trips values with expiry', async () => {

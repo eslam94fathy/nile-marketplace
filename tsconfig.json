@@ -30,5 +30,7 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "tests", "*.config.ts"]
+  "include": ["src", "tests", "*.config.ts"],
+  // Deliberately broken imports used to prove the architecture rules fire.
+  "exclude": ["tests/fixtures/architecture"]
 }

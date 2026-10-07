@@ -6,7 +6,7 @@ import { RabbitMqPublisher } from '../../pkg/messaging/rabbitmq-publisher.js';
 import { type AuditLogger, PgAuditLogger } from '../audit/audit.logger.js';
 import { closeRedis, createRedis } from '../cache/redis.provider.js';
 import type { Config } from '../config/config.schema.js';
-import { getCorrelationId } from '../correlation/correlation-context.js';
+import { getCorrelationId, withoutCorrelation } from '../correlation/correlation-context.js';
 import { Database } from '../database/database.js';
 import { createPool } from '../database/pool.provider.js';
 import { EVENTS_EXCHANGE, OutboxRelay } from '../events/outbox.relay.js';
@@ -78,7 +78,8 @@ export function registerWorkerDependencies(container: DependencyContainer): void
     url: config.rabbitmq.url,
     exchange: EVENTS_EXCHANGE,
     connectionName: 'nile-worker',
-    onError: (err) => logger.warn({ err }, 'RabbitMQ connection error'),
+    // A lost connection is not caused by the event being published when it is noticed.
+    onError: (err) => withoutCorrelation(() => logger.warn({ err }, 'RabbitMQ connection error')),
   });
   container.register<MessagePublisher>(TOKENS.MessagePublisher, { useValue: publisher });
 
