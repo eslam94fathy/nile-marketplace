@@ -55,7 +55,7 @@ The blueprint (`docs/marketplace_blueprint.md`) fixes the architecture: no ORM, 
   ```json
   { "data": [], "pagination": { "nextCursor": "…", "hasNextPage": true } }
   ```
-  `limit` defaults to 20, max 100. Cursors are opaque (base64url).
+  `limit` defaults to 20, max 100. Cursors are opaque (base64url) and bound to one sort order (`src/lib/pagination`). Chronological lists sort by the uuidv7 `id` alone. Timestamp sort keys are carried as microsecond UTC ISO text produced in SQL, never through a JS `Date` (millisecond precision silently skips rows).
 - **Module layout** (`src/app/<module>/`): `domain/`, `application/` (services + ports), `infrastructure/` (SQL repositories with co-located SQL), `presentation/` (controllers, zod schemas, router), `index.ts`.
 - **Outbox and audit** infrastructure is part of Phase 1 (tasks 1.15–1.16) so later phases can use it. Business events are only added when a real consumer exists.
 
