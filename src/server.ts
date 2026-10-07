@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   const redis = container.resolve<Redis>(TOKENS.Redis);
   shutdown.register('redis', () => closeRedis(redis));
 
-  const server = await listen(createApp(), config.http.port);
+  const server = await listen(createApp(container), config.http.port);
   shutdown.register('http-server', () => closeServer(server));
   logger.info({ port: config.http.port, nodeEnv: config.nodeEnv }, 'HTTP server listening');
 

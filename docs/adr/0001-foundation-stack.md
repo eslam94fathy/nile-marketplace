@@ -50,6 +50,7 @@ The blueprint (`docs/marketplace_blueprint.md`) fixes the architecture: no ORM, 
   ```json
   { "error": { "code": "…", "message": "…", "details": {}, "correlationId": "…" } }
   ```
+- **Error classification.** Every deliberate error extends `AppError` (`src/lib/error`) and has a transport-independent `category` (`VALIDATION`, `NOT_FOUND`, `CONFLICT`, `BUSINESS_RULE`, …) plus a stable `code`. Only the HTTP error handler maps categories to status codes, so domain code never depends on HTTP. Messages of `INTERNAL` errors are never returned to clients. Repositories translate known constraint violations into domain errors; untranslated unique/FK violations fall back to a generic 409 and are logged as warnings.
 - **List response:**
   ```json
   { "data": [], "pagination": { "nextCursor": "…", "hasNextPage": true } }
