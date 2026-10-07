@@ -57,6 +57,7 @@ The blueprint (`docs/marketplace_blueprint.md`) fixes the architecture: no ORM, 
   ```
   `limit` defaults to 20, max 100. Cursors are opaque (base64url) and bound to one sort order (`src/lib/pagination`). Chronological lists sort by the uuidv7 `id` alone. Timestamp sort keys are carried as microsecond UTC ISO text produced in SQL, never through a JS `Date` (millisecond precision silently skips rows).
 - **Module layout** (`src/app/<module>/`): `domain/`, `application/` (services + ports), `infrastructure/` (SQL repositories with co-located SQL), `presentation/` (controllers, zod schemas, router), `index.ts`.
+- **Health.** `GET /health/live` checks nothing (a dependency outage must not restart the process). `GET /health/ready` checks only the dependencies that process needs: the API checks PostgreSQL and Redis but **not** RabbitMQ, since the outbox keeps the API working while the broker is down. The worker reports broker health. Responses never include raw dependency errors.
 - **Outbox and audit** infrastructure is part of Phase 1 (tasks 1.15–1.16) so later phases can use it. Business events are only added when a real consumer exists.
 
 ## Consequences

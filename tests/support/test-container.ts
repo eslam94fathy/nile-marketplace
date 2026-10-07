@@ -1,4 +1,7 @@
+import type { Redis } from 'ioredis';
+import type { Pool } from 'pg';
 import type { DependencyContainer } from 'tsyringe';
+import { closeRedis } from '../../src/lib/cache/redis.provider.js';
 import type { Config } from '../../src/lib/config/config.schema.js';
 import { loadConfig } from '../../src/lib/config/load-config.js';
 import { buildContainer } from '../../src/lib/dependency-injection/container.js';
@@ -14,11 +17,30 @@ export const testConfig: Config = loadConfig({
   RABBITMQ_URL: 'amqp://nile:nile@localhost:5672',
 });
 
-/** Builds a container with the test config, optionally replacing the logger. */
-export function createTestContainer(options: { logger?: Logger } = {}): DependencyContainer {
-  const container = buildContainer({ config: testConfig, processName: 'test' });
+export interface TestContainerOptions {
+  /** Replaces the logger (e.g. a capturing logger). */
+  logger?: Logger;
+  /** Overrides parts of the test config, e.g. an unreachable Redis URL. */
+  config?: { db?: Partial<Config['db']>; redis?: Partial<Config['redis']> };
+}
+
+export function createTestContainer(options: TestContainerOptions = {}): DependencyContainer {
+  const config: Config = {
+    ...testConfig,
+    db: { ...testConfig.db, ...options.config?.db },
+    redis: { ...testConfig.redis, ...options.config?.redis },
+  };
+  const container = buildContainer({ config, processName: 'test' });
   if (options.logger) {
     container.register<Logger>(TOKENS.Logger, { useValue: options.logger });
   }
   return container;
+}
+
+/** Closes the infrastructure clients of a test container that actually connected. */
+export async function closeTestContainer(container: DependencyContainer): Promise<void> {
+  await Promise.all([
+    container.resolve<Pool>(TOKENS.PgPool).end(),
+    closeRedis(container.resolve<Redis>(TOKENS.Redis)),
+  ]);
 }

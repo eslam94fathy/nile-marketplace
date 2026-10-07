@@ -18,7 +18,7 @@ export function createApp(container: DependencyContainer): Express {
   app.use(helmet());
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
-  registerRoutes(app);
+  registerRoutes(app, container);
 
   app.use(notFoundMiddleware());
   app.use(errorHandler(container.resolve<Logger>(TOKENS.Logger)));
