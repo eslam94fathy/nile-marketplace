@@ -17,6 +17,16 @@ describe('createApp', () => {
     expect(response.headers['strict-transport-security']).toBeDefined();
   });
 
+  it('returns a correlation ID on every response, including 404s', async () => {
+    const preserved = await request(createApp())
+      .get('/api/v1/does-not-exist')
+      .set('X-Correlation-ID', 'app-level-1');
+    const generated = await request(createApp()).get('/api/v1/does-not-exist');
+
+    expect(preserved.headers['x-correlation-id']).toBe('app-level-1');
+    expect(generated.headers['x-correlation-id']).toEqual(expect.any(String));
+  });
+
   it('rejects JSON bodies over the size limit with 413', async () => {
     const oversized = { data: 'x'.repeat(101 * 1024) };
 

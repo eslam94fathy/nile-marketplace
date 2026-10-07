@@ -3,6 +3,7 @@ import type { Redis } from 'ioredis';
 import type { Pool } from 'pg';
 import { createRedis } from '../cache/redis.provider.js';
 import type { Config } from '../config/config.schema.js';
+import { getCorrelationId } from '../correlation/correlation-context.js';
 import { Database } from '../database/database.js';
 import { createPool } from '../database/pool.provider.js';
 import { createLogger, type Logger } from '../logger/logger.js';
@@ -28,11 +29,11 @@ export function buildContainer({
 
   container.register<Config>(TOKENS.Config, { useValue: config });
 
-  // The correlation ID provider is wired in Task 1.9.
   const logger = createLogger({
     name: processName,
     level: config.log.level,
     pretty: config.nodeEnv === 'development',
+    getCorrelationId,
   });
   container.register<Logger>(TOKENS.Logger, { useValue: logger });
 
