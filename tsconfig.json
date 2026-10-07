@@ -1,0 +1,34 @@
+{
+  // Type-checks everything (source, tests, config). Emitting is handled by tsconfig.build.json.
+  "compilerOptions": {
+    // Language and environment
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "types": ["node"],
+
+    // Modules: native ESM on Node. Relative imports must use the ".js" extension.
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    // Decorators for tsyringe. Metadata emission is deliberately off: every injected
+    // constructor parameter uses an explicit @inject(TOKEN), so tsc, tsx and Vitest behave the same.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
+
+    // Type safety
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "tests", "*.config.ts"]
+}
